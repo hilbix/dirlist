@@ -1,69 +1,23 @@
-Move files by atomic rename instead of copy. (Includes dirlist)
+Primitive directory lister, quicker than ls, find and echo *
 # $Header$
 #
 # $Log$
-# Revision 1.7  2008-10-16 19:42:50  tino
-# Multiargs and options -a -d -l -m -u -o
-#
-# Revision 1.6  2008-05-28 14:47:56  tino
-# Option -c
+# Revision 1.8  2010-06-01 23:51:17  tino
+# Standalone version, slightly improved with option -e
 #
 # Revision 1.5  2008-05-07 15:12:17  tino
 # dirlist added
-#
-# Revision 1.4  2008-05-04 04:28:22  tino
-# Option -s added
-#
-# Revision 1.3  2006-11-07 12:41:20  tino
-# cmpanddel.sh added
-#
-# Revision 1.2  2006/08/12 02:07:38  tino
-# corrected for option -o
-#
-# Revision 1.1  2006/07/22 23:47:58  tino
-# First version for testing
 
-Post-modern mv implementations re-invented a wheel which is no more
-round.  If they cannot move they do a copy/unlink() operation which is
-unsatisfying, as when the unlink() fails you stay with the copy which
-was insanely done.
+Without any option it can skip the stat() call, which can improve
+the speed on slow filesystems.
 
-mv shall be an atomic operation.  However you cannot switch mv into
-atomic mode.  This version here does what mv is supposed to do:
+'ls' and 'echo *' are not good from shell's view to work on files.
+Even 'for a in *' often is slow, if you happen to hit zillons of files.
+This is where dirlist can optimize things as it, by default, outputs
+the directory listing unbuffered.
 
-It renames the target and fails if it cannot do the rename (but beware
-the common NFS bug in such a situation).  In unsafe mode it does this
-using the rename() operation (note that rename() has a possible race
-condition which may overwrite a destination unconditionally, if it is
-created after mvatom has checked the presence of the destination), in
-safe mode (default, introduced in 0.5.0) it uses hardlink/unlink.  The
-move is "atomically" in respect to the destination either is there
-completely or missing, it is not "atomically" in the sense of "man 2
-rename".  If you need this, you need option -uf.
+This is a companion to all other tools which can read a file list
+from stdin.  Also there is an escape option to properly read filenames
+with the shell read command.
 
-Another thing is that it only guesses something for the last argument
-like mv does if it is instructed to do so.  So it always works
-reliably.  You know what it does from looking at the command line, and
-if no heuristics are given this does not depend from the last arg
-beeing a directory or not.
-
-If the destination is a directory this must be given as an option to
-mvatom.  Also all options are simple and clear and there is no way to
-overwrite files, as mvatom never overwrites files (but beware the race
-condition in unsafe mode which was used before 0.5.0).
-
-Also you can "move away" files with mvatom, too.  This is done with
-the "backup" feature, where an existing destination can be renamed.
-
-There now is a helper script: <dl> <dt> cmpanddel.sh </dt><dd> deletes
-everything from a first directory which has an indentical match in a
-second directory.  It shall be safe even against the weirdest
-situations where you simply cannot detect that the first directory in
-fact is the second one, thus accidentally deleting a whole directory
-tree.  The protection is done by renaming the source first with
-mvatom.  It is not race condition free, so it is thought for all those
-lazy experienced sysadmins out there who exactly know what they are
-doing. </dt></dl>
-
-There also now is "dirlist" a little helper to create directory lists.
-This is for mvatom option "-l -"
+Examples are given when you call it with option -h (help).

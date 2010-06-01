@@ -1,57 +1,59 @@
 /* $Header$
-*
-* Primitive directory lister
-*
-* Copyright (C)2008-2009 Valentin Hilbig <webmaster@scylla-charybdis.com>
-*
-* This program is free software; you can redistribute it and/or
-* modify it under the terms of the GNU General Public License as
-* published by the Free Software Foundation; either version 2 of the
-* License, or (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful, but
-* WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-* General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program; if not, write to the Free Software
-* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-* 02110-1301 USA.
-*
-* $Log$
-* Revision 1.4  2009-04-09 18:05:57  tino
-* dist
-*
-* Revision 1.3  2008-10-16 19:42:50  tino
-* Multiargs and options -a -d -l -m -u -o
-*
-* Revision 1.2  2008-05-21 17:56:53  tino
-* Options
-*
-* Revision 1.1  2008-05-07 15:12:17  tino
-* dirlist added
-*/
+ *
+ * Primitive directory lister
+ *
+ * Copyright (C)2008-2010 Valentin Hilbig <webmaster@scylla-charybdis.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301 USA.
+ *
+ * $Log$
+ * Revision 1.5  2010-06-01 23:51:17  tino
+ * Standalone version, slightly improved with option -e
+ *
+ * Revision 1.3  2008-10-16 19:42:50  tino
+ * Multiargs and options -a -d -l -m -u -o
+ *
+ * Revision 1.2  2008-05-21 17:56:53  tino
+ * Options
+ *
+ * Revision 1.1  2008-05-07 15:12:17  tino
+ * dirlist added
+ */
 
 #include "tino/main_getini.h"
 #include "tino/err.h"
 #include "tino/filetool.h"
 #include "tino/slist.h"
+#include "tino/put.h"
 
 #include <dirent.h>
 
-#include "mvatom_version.h"
+#include "dirlist_version.h"
 
-static int f_nulls, f_buffered, f_parent, f_nodot, f_source, f_one, f_debug, f_read, f_readz, f_recurse;
+static int f_nulls, f_buffered, f_parent, f_nodot, f_source, f_one, f_debug, f_read, f_readz, f_recurse, f_escape;
 static unsigned f_set, f_unset, f_set_any, f_unset_any;
 static TINO_SLIST	subdirs;
+static int put = -1;
 
 static void
 putmode(unsigned mode)
 {
   if (mode)
     putmode(mode/8);
-  putchar('0'+(mode&7));
+  tino_io_put(put, '0'+(mode&7));
 }
 
 static long
@@ -93,7 +95,7 @@ do_stat(const char *dir, const char *subdir, const char *name)
       tino_freeO(tmp);
       return -1;
     }
-  if (f_recurse && S_ISDIR(mode) && ( !name || name[0]!='.' || ((name[1] && name[1]!='.') || name[2]) ))
+  if (f_recurse && S_ISDIR(mode) && ( !name || name[0]!='.' || (name[1] && ( name[1]!='.' || name[2]) )))
     tino_glist_add_ptr(subdirs, tmp);
   else
     tino_freeO(tmp);
@@ -110,7 +112,7 @@ do_stat(const char *dir, const char *subdir, const char *name)
   if (f_debug)
     {
       putmode((unsigned)mode);
-      putchar(' ');
+      tino_io_put(put, ' ');
     }
   return 0;
 }
@@ -118,10 +120,13 @@ do_stat(const char *dir, const char *subdir, const char *name)
 static void
 out(const char *name)
 {
-  fputs(name, stdout);
-  putchar(f_nulls ? 0 : '\n');
+  if (f_escape)
+    tino_put_ansi(put, name, NULL);
+  else
+    tino_put_s(put, name);
+  tino_io_put(put, f_nulls ? 0 : '\n');
   if (!f_buffered)
-    fflush(stdout);
+    tino_io_flush_write(put);
 }
 
 static int
@@ -216,13 +221,11 @@ dirlist(const char *dir, void *user)
 {
   subdirs	= tino_slist_new();
 
-  if (f_buffered)
-    setvbuf(stdout, NULL, _IOFBF, BUFSIZ);
   if (!dir)
     dir=".";
   if (!f_debug)
     do_dirlist1(dir, (f_set || f_unset || f_set_any || f_unset_any));
-  else if (!do_stat(dir, NULL, NULL))
+  else if (!do_stat(NULL, NULL, dir))
     {
       out(dir);
       if (f_recurse)
@@ -230,24 +233,30 @@ dirlist(const char *dir, void *user)
     }
   tino_slist_destroy(subdirs);
   subdirs	= 0;
+
+  tino_io_flush_write(put);
 }
 
 int
 main(int argc, char **argv)
 {
+  put	= tino_io_fd(1, "stdout");
   return tino_main_if(dirlist,
 		      NULL,	/* user	*/
 		      NULL,
 		      argc, argv,
 		      0, -1,
-		      TINO_GETOPT_VERSION(MVATOM_VERSION)
+		      TINO_GETOPT_VERSION(DIRLIST_VERSION)
 		      " [directory..]\n"
 		      "\tA primitive directory lister, lists all names in a dir,\n"
-		      "\tskips . and .. by default."
+		      "\tskips . and .. by default.\n"
+		      "\t# dirlist -rem0100000 |\n"  /* -0m04000 | dirlist -0zm04000 | dirlist -ezm0100000 |\n" */
+		      "\t# while read -r a; do eval a=\"\\$'$a'\"; ..."
 		      ,
 
 		      TINO_GETOPT_FLAG
-		      "0	write NUL terminated lines (instead of LF)"
+		      "0	write NUL terminated lines (instead of LF)\n"
+		      "		Cannot be used with -e"
 		      , &f_nulls,
 
 		      TINO_GETOPT_UNSIGNED
@@ -258,6 +267,11 @@ main(int argc, char **argv)
 		      "d	debug mode, print octal mode in front of filename\n"
 		      "		Does no directlry list, needs a stat() call"
 		      , &f_debug,
+
+		      TINO_GETOPT_FLAG
+		      "e	ANSI-escape mode for easy bash integration, example:\n"
+		      "		# dirlist -e | while read f; do eval f=\"\\$'$f'\"; ...\n"
+		      , &f_escape,
 
 		      TINO_GETOPT_FLAG
 		      "f	full buffered IO (no flushs after each line)"
@@ -282,7 +296,8 @@ main(int argc, char **argv)
 		      , &f_nodot,
 
 		      TINO_GETOPT_FLAG
-		      "o	one arg mode, this lists the first available directory"
+		      "o	one arg mode, this lists the first available directory\n"
+		      "		dirlist a b c -- lists b but not c if a is not available"
 		      , &f_one,
 
 		      TINO_GETOPT_FLAG
@@ -302,7 +317,8 @@ main(int argc, char **argv)
 		      , &f_unset_any,
 #if 0
 		      TINO_GETOPT_FLAG
-		      "z	on -i read NUL terminated input (else lines)"
+		      "z	on -i read NUL terminated input (else lines)\n"
+		      "		For convenience, 'dirlist -z' is 'dirlist -isz .'"
 		      , &f_readz,
 #endif
 		      NULL);

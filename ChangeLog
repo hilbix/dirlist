@@ -1,3 +1,15 @@
+2010-06-02  Valentin Hilbig  <tino@zoo.03.softkill.net>
+
+	* dirlist.c (main): output now via tino_io
+
+2009-06-24  Valentin Hilbig  <tino@zoo.03.softkill.net>
+
+	* dirlist.c (dirlist): stat of files now possible, too
+
+2009-06-16  Valentin Hilbig  <tino@zoo.03.softkill.net>
+
+	* dirlist.c (do_stat): recoursion fixed for -p modes
+
 2008-05-28  Valentin Hilbig  <tino@firebird.03.softkill.net>
 
 	* mvatom.c (do_rename_away, main): Option -c

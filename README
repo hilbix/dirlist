@@ -1,16 +1,22 @@
 $Header$
 
-move files atomicly.
+Primitive directory lister.
+
+Without options it has no sort, no stat(),
+so it is quicker than ls, find or echo *.
 
 Compile:
 	make
 
 Usage:
-	mvatom [options] oldname newname
-	mvatom [options] -d directory name...
-	mvatom [options] -b name
 	dirlist
 	dirlist DIR
+
+        dirlist -rem0100000 | while read -r a; do eval a="\$'$a'"; ...
+
+Future usage (not yet implemented):
+	dirlist -0m040000 | dirlist -oz # list first dir
+	dirlist -0m040000 | dirlist -0z | dirlist -z
 
 About:
 	See DESCRIPTION
@@ -20,9 +26,8 @@ webmaster@scylla-charybdis.com
 http://www.scylla-charybdis.com/tools.php
 
 $Log$
+Revision 1.3  2010-06-01 23:51:17  tino
+Standalone version, slightly improved with option -e
+
 Revision 1.2  2008-05-07 15:12:17  tino
 dirlist added
-
-Revision 1.1  2006-07-22 23:47:58  tino
-First version for testing
-
