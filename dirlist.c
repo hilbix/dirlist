@@ -20,6 +20,9 @@
  * 02110-1301 USA.
  *
  * $Log$
+ * Revision 1.7  2010-06-02 00:32:27  tino
+ * example improvements
+ *
  * Revision 1.6  2010-06-02 00:26:39  tino
  * Option -t
  *
@@ -289,7 +292,7 @@ main(int argc, char **argv)
 		      " [directory..]\n"
 		      "\tA primitive directory lister, lists all names in a dir,\n"
 		      "\tskips . and .. by default.\n"
-		      "\t# dirlist -rem0100000 |\n"  /* -0m04000 | dirlist -0zm04000 | dirlist -ezm0100000 |\n" */
+		      "\t# dirlist -ret dir |\n"  /* -0tdir | dirlist -0ztdir | dirlist -ezt file |\n" */
 		      "\t# while read -r a; do eval a=\"\\$'$a'\"; ..."
 		      ,
 

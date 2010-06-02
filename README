@@ -12,11 +12,11 @@ Usage:
 	dirlist
 	dirlist DIR
 
-        dirlist -rem0100000 | while read -r a; do eval a="\$'$a'"; ...
+        dirlist -ret file | while read -r a; do eval a="\$'$a'"; ...
 
 Future usage (not yet implemented):
-	dirlist -0m040000 | dirlist -oz # list first dir
-	dirlist -0m040000 | dirlist -0z | dirlist -z
+	dirlist -0tdir | dirlist -oz # list first dir
+	dirlist -0tdir | dirlist -0z | dirlist -z
 
 About:
 	See DESCRIPTION
@@ -26,6 +26,9 @@ webmaster@scylla-charybdis.com
 http://www.scylla-charybdis.com/tools.php
 
 $Log$
+Revision 1.4  2010-06-02 00:32:27  tino
+example improvements
+
 Revision 1.3  2010-06-01 23:51:17  tino
 Standalone version, slightly improved with option -e
 
