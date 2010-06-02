@@ -1,6 +1,7 @@
 2010-06-02  Valentin Hilbig  <tino@zoo.03.softkill.net>
 
 	* dirlist.c (main): output now via tino_io
+	(set_type): option -t added
 
 2009-06-24  Valentin Hilbig  <tino@zoo.03.softkill.net>
 

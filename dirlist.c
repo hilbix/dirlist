@@ -20,6 +20,9 @@
  * 02110-1301 USA.
  *
  * $Log$
+ * Revision 1.6  2010-06-02 00:26:39  tino
+ * Option -t
+ *
  * Revision 1.5  2010-06-01 23:51:17  tino
  * Standalone version, slightly improved with option -e
  *
@@ -46,6 +49,7 @@
 static int f_nulls, f_buffered, f_parent, f_nodot, f_source, f_one, f_debug, f_read, f_readz, f_recurse, f_escape;
 static unsigned f_set, f_unset, f_set_any, f_unset_any;
 static TINO_SLIST	subdirs;
+static const char	*f_type;
 static int put = -1;
 
 static void
@@ -217,10 +221,45 @@ do_dirlist1(const char *dir, int stats)
 }
 
 static void
+set_type(void)
+{
+  static struct { int bits; const char *type; } types[] =
+    {
+      { S_IFSOCK,	"sock" },
+      { S_IFLNK,	"soft" },
+      { S_IFREG,	"file" },
+      { S_IFBLK,	"blk" },
+      { S_IFDIR,	"dir" },
+      { S_IFCHR,	"chr" },
+      { S_IFIFO,	"fifo" },
+    };
+  int	i;
+
+  for (i=sizeof types/sizeof *types; --i>=0; )
+    if (!strcmp(types[i].type, f_type))
+      {
+        f_set	|= types[i].bits;
+	f_unset	|= types[i].bits ^ S_IFMT;
+	f_type	= 0;	/* we do not need to calc it again	*/
+	return;
+      }
+  fprintf(stderr, "error: unknown type: '%s' (use type '?' to see a list)\n", f_type);
+  if (!strcmp(f_type, "?"))
+    {
+      fprintf(stderr, "Possible types:\n");
+      for (i=sizeof types/sizeof *types; --i>=0; )
+	fprintf(stderr, "%-5s (%07o)\n", types[i].type, types[i].bits);
+    }
+  exit(1);
+}
+
+static void
 dirlist(const char *dir, void *user)
 {
   subdirs	= tino_slist_new();
 
+  if (f_type)
+    set_type();
   if (!dir)
     dir=".";
   if (!f_debug)
@@ -311,6 +350,11 @@ main(int argc, char **argv)
 		      TINO_GETOPT_FLAG
 		      "s	add source path to output"
 		      , &f_source,
+
+		      TINO_GETOPT_STRING
+		      "t type	set file type to use (dir, file, etc.)\n"
+		      "		sets the correct flags for -m and -l"
+		      , &f_type,
 
 		      TINO_GETOPT_UNSIGNED
 		      "u mode	any given bit unset in Mode. (see -m)"

@@ -1,4 +1,5 @@
 Bugfix: Stat of files now possible.
 Option -e added for better shell compatibility.
+Option -t added because file type flags are incomprehensible.
 
 This is a standalone version, previous versions were part of mvatom.
