@@ -20,6 +20,9 @@
  * 02110-1301 USA.
  *
  * $Log$
+ * Revision 1.8  2010-08-11 05:29:26  tino
+ * SIGPIPE now is honored
+ *
  * Revision 1.7  2010-06-02 00:32:27  tino
  * example improvements
  *
@@ -44,6 +47,7 @@
 #include "tino/filetool.h"
 #include "tino/slist.h"
 #include "tino/put.h"
+#include "tino/signals.h"
 
 #include <dirent.h>
 
@@ -282,6 +286,7 @@ dirlist(const char *dir, void *user)
 int
 main(int argc, char **argv)
 {
+  tino_sigdfl(SIGPIPE);
   put	= tino_io_fd(1, "stdout");
   return tino_main_if(dirlist,
 		      NULL,	/* user	*/
@@ -312,7 +317,7 @@ main(int argc, char **argv)
 
 		      TINO_GETOPT_FLAG
 		      "e	ANSI-escape mode for easy bash integration, example:\n"
-		      "		# dirlist -e | while read f; do eval f=\"\\$'$f'\"; ...\n"
+		      "		# dirlist -e | while read f; do eval f=\"\\$'$f'\"; ..."
 		      , &f_escape,
 
 		      TINO_GETOPT_FLAG

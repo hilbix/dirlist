@@ -1,5 +1,9 @@
-Bugfix: Stat of files now possible.
-Option -e added for better shell compatibility.
-Option -t added because file type flags are incomprehensible.
+Minor fix: Set SIGPIPE to standard behavior
 
-This is a standalone version, previous versions were part of mvatom.
+For unknown reason I came across the problem, that SIGPIPE was ignored by default on a session.
+I really do not know why this can happen, but apparently the SIGPIPE handling is not reset on exec(),
+thus a wrong setting can be inherited from environments somehow.
+
+Setting it explicitly to SIGDFL seems to fix this issue.
+
+Also some examples given were improved.
