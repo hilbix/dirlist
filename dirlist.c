@@ -2,7 +2,7 @@
  *
  * Primitive directory lister
  *
- * Copyright (C)2008-2010 Valentin Hilbig <webmaster@scylla-charybdis.com>
+ * Copyright (C)2008-2011 Valentin Hilbig <webmaster@scylla-charybdis.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -20,6 +20,9 @@
  * 02110-1301 USA.
  *
  * $Log$
+ * Revision 1.9  2011-05-08 21:27:45  tino
+ * Options -i -z and bugfix for -d
+ *
  * Revision 1.8  2010-08-11 05:29:26  tino
  * SIGPIPE now is honored
  *
@@ -93,7 +96,9 @@ get_mode(const char *dir, const char *file)
   return ret;
 }
 
-static int
+/* returns -1 on error, -2 if file has to be skipped, else file mode
+ */
+static long
 do_stat(const char *dir, const char *subdir, const char *name)
 {
   long	mode;
@@ -112,20 +117,20 @@ do_stat(const char *dir, const char *subdir, const char *name)
     tino_freeO(tmp);
 
   if (f_set && ((unsigned)mode&f_set)!=f_set)
-    return 1;
-  if (f_unset && ((unsigned)mode&f_unset)!=0)	/* same as: if (st.st_mode&f_unset) return 1;	*/
-    return 1;
+    return -2;
+  if (f_unset && ((unsigned)mode&f_unset)!=0)	/* same as: if (st.st_mode&f_unset) return -2;	*/
+    return -2;
   if (f_set_any && ((unsigned)mode&f_set_any)==0)
-    return 1;
+    return -2;
   if (f_unset_any && ((unsigned)mode&f_unset_any)==f_unset_any)
-    return 1;
+    return -2;
 
   if (f_debug)
     {
       putmode((unsigned)mode);
       tino_io_put(put, ' ');
     }
-  return 0;
+  return mode;
 }
 
 static void
@@ -164,7 +169,7 @@ do_dirlist(const char *dir, const char *subdir, const char *both, int stats)
 	    continue;
 	}
 
-      if ((f_recurse || stats) && do_stat(dir, subdir, d->d_name))
+      if ((f_recurse || stats) && do_stat(dir, subdir, d->d_name)<0)
 	continue;
 
       if (f_source || subdir)
@@ -209,7 +214,7 @@ do_dirlist_start(const char *dir, int stats)
 {
   const char	*sub;
 
-  if (!do_dirlist_step(dir, NULL, stats))
+  if (dir && !do_dirlist_step(dir, NULL, stats))
     return 0;
 
   while ((sub=tino_slist_get(subdirs))!=0)
@@ -220,11 +225,49 @@ do_dirlist_start(const char *dir, int stats)
   return 1;	/* Directory found, even if it contains errors in subdirectories	*/
 }
 
-static void
-do_dirlist1(const char *dir, int stats)
+static int
+do_dirlist1(const char *dir, int check_file)
 {
-  if (do_dirlist_start(dir, stats) && f_one)
-    exit(0);
+  int flag = 0;
+
+  if (f_debug || check_file)
+    {
+      long	mode = /* shutup compiler */ 0;
+      int	is_stdin = check_file && !strcmp(dir,"-");
+
+      if (!is_stdin && (mode=do_stat(NULL, NULL, dir))<0)
+        return 0;
+      tino_slist_clear(subdirs);	/* bugfix and workaround: do not list twice on recurese&debug	*/
+
+      if (is_stdin || (check_file && S_ISREG(mode)))
+	{
+	  static TINO_BUF	buf;	/* cannot be reached twice	*/
+	  int			fd = 0;
+	  const char		*line;
+
+	  /* we have a file, read sources from there */
+	  if (!is_stdin && (fd=tino_file_open_readE(dir))<0)
+	    {
+	      TINO_ERR1("ETTDI104B %s: cannot open file for read", dir);
+	      return 0;
+	    }
+	  while ((line=tino_buf_line_read(&buf, fd, (f_readz ? 0 : '\n')))!=0)
+	    if (do_dirlist1(line, 0) && f_one)
+	      exit(0);
+	  if (fd ? tino_file_closeE(fd) : errno)
+	    TINO_ERR1("ETTDI105B %s: read error on file", dir);
+	  return 0;	/* do not stop, as stop is done above	*/
+	}
+
+      if (f_debug)
+        {
+          flag = 1;
+          out(dir);
+          if (!f_recurse)
+	    return flag;
+        }
+    }
+  return do_dirlist_start(dir, (f_set || f_unset || f_set_any || f_unset_any)) || flag;
 }
 
 static void
@@ -261,22 +304,21 @@ set_type(void)
 }
 
 static void
-dirlist(const char *dir, void *user)
+dirlist(const char *dir, /*ignored*/ void *user)
 {
   subdirs	= tino_slist_new();
 
   if (f_type)
     set_type();
-  if (!dir)
-    dir=".";
-  if (!f_debug)
-    do_dirlist1(dir, (f_set || f_unset || f_set_any || f_unset_any));
-  else if (!do_stat(NULL, NULL, dir))
+
+  if (f_readz && !f_read)
     {
-      out(dir);
-      if (f_recurse)
-	do_dirlist_start(dir, (f_set || f_unset || f_set_any || f_unset_any));
+      f_read	= 1;
+      f_source	= 1;
     }
+  if (do_dirlist1(dir ? dir : f_read ? "-" : ".", f_read) && f_one)
+    exit(0);
+
   tino_slist_destroy(subdirs);
   subdirs	= 0;
 
@@ -323,11 +365,12 @@ main(int argc, char **argv)
 		      TINO_GETOPT_FLAG
 		      "f	full buffered IO (no flushs after each line)"
 		      , &f_buffered,
-#if 0
+
 		      TINO_GETOPT_FLAG
-		      "i	on file arguments, read targets from it, '-' for stdIn"
+		      "i	on file arguments, read targets from it, '-' for stdIn\n"
+		      "		For convenience 'dirlist -i' is 'dirlist -i -'"
 		      , &f_read,
-#endif
+
 		      TINO_GETOPT_UNSIGNED
 		      "l mode	given bits must be unset in Mode. (see -m)"
 		      , &f_unset,
@@ -367,11 +410,11 @@ main(int argc, char **argv)
 		      TINO_GETOPT_UNSIGNED
 		      "u mode	any given bit unset in Mode. (see -m)"
 		      , &f_unset_any,
-#if 0
+
 		      TINO_GETOPT_FLAG
 		      "z	on -i read NUL terminated input (else lines)\n"
-		      "		For convenience, 'dirlist -z' is 'dirlist -isz .'"
+		      "		For convenience, 'dirlist -z' is 'dirlist -isz -'"
 		      , &f_readz,
-#endif
+
 		      NULL);
 }

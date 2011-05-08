@@ -1,9 +1,10 @@
-Minor fix: Set SIGPIPE to standard behavior
+Options -i and -z added, bugfix for -d
 
-For unknown reason I came across the problem, that SIGPIPE was ignored by default on a session.
-I really do not know why this can happen, but apparently the SIGPIPE handling is not reset on exec(),
-thus a wrong setting can be inherited from environments somehow.
+The bug which tried to list DIR/DIR on "dirlist -dr DIR" was removed.
 
-Setting it explicitly to SIGDFL seems to fix this issue.
+You can now chain dirlist if called properly or read directories to read from stdin like this:
 
-Also some examples given were improved.
+dirlist -s0 IMG | dirlist -0z | dirlist -z | wc -l
+
+This counts the entries IMG/*/*/* without calls to stat().  And you will see errors if
+IMG/* or IMG/*/* contains non-directories.
