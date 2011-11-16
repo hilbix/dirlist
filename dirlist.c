@@ -20,6 +20,9 @@
  * 02110-1301 USA.
  *
  * $Log$
+ * Revision 1.10  2011-11-16 03:14:05  tino
+ * Negated types
+ *
  * Revision 1.9  2011-05-08 21:27:45  tino
  * Options -i -z and bugfix for -d
  *
@@ -271,7 +274,7 @@ do_dirlist1(const char *dir, int check_file)
 }
 
 static void
-set_type(void)
+set_type(const char *type)
 {
   static struct { int bits; const char *type; } types[] =
     {
@@ -283,24 +286,42 @@ set_type(void)
       { S_IFCHR,	"chr" },
       { S_IFIFO,	"fifo" },
     };
-  int	i;
+  int	i, inv;
 
+  inv	= 0;
+  if (*type=='-')
+    {
+      type++;
+      inv++;
+    }
   for (i=sizeof types/sizeof *types; --i>=0; )
-    if (!strcmp(types[i].type, f_type))
+    if (!strcmp(types[i].type, type))
       {
+	if (inv)
+	  {
+	    f_unset_any	|= types[i].bits;
+	    f_set_any	|= types[i].bits ^ S_IFMT;
+	    return;
+	  }
         f_set	|= types[i].bits;
 	f_unset	|= types[i].bits ^ S_IFMT;
-	f_type	= 0;	/* we do not need to calc it again	*/
 	return;
       }
   fprintf(stderr, "error: unknown type: '%s' (use type '?' to see a list)\n", f_type);
   if (!strcmp(f_type, "?"))
     {
-      fprintf(stderr, "Possible types:\n");
+      fprintf(stderr, "Possible types (prefix with - to negate):\n");
       for (i=sizeof types/sizeof *types; --i>=0; )
 	fprintf(stderr, "%-5s (%07o)\n", types[i].type, types[i].bits);
     }
   exit(1);
+}
+
+static void
+set_types(void)
+{
+  set_type(f_type);
+  f_type	= 0;	/* we do not need to calc it again	*/
 }
 
 static void
@@ -309,7 +330,7 @@ dirlist(const char *dir, /*ignored*/ void *user)
   subdirs	= tino_slist_new();
 
   if (f_type)
-    set_type();
+    set_types();
 
   if (f_readz && !f_read)
     {

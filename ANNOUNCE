@@ -1,10 +1,7 @@
-Options -i and -z added, bugfix for -d
+-t now accepts negated variants like -dir or -file
 
-The bug which tried to list DIR/DIR on "dirlist -dr DIR" was removed.
+Useful like in:
 
-You can now chain dirlist if called properly or read directories to read from stdin like this:
+dirlist -rt-dir /directory
 
-dirlist -s0 IMG | dirlist -0z | dirlist -z | wc -l
-
-This counts the entries IMG/*/*/* without calls to stat().  And you will see errors if
-IMG/* or IMG/*/* contains non-directories.
+Note that this was possible before, but it was not easy to specify.
