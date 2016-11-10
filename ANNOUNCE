@@ -1,7 +1,2 @@
--t now accepts negated variants like -dir or -file
-
-Useful like in:
-
-dirlist -rt-dir /directory
-
-Note that this was possible before, but it was not easy to specify.
+Announcements are now in the git commit log:
+git log --follow VERSION

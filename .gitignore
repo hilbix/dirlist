@@ -1,3 +1,4 @@
 *.d
 *.o
 dirlist
+dirlist_version.h
