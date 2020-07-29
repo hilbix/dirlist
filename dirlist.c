@@ -18,34 +18,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- *
- * $Log$
- * Revision 1.10  2011-11-16 03:14:05  tino
- * Negated types
- *
- * Revision 1.9  2011-05-08 21:27:45  tino
- * Options -i -z and bugfix for -d
- *
- * Revision 1.8  2010-08-11 05:29:26  tino
- * SIGPIPE now is honored
- *
- * Revision 1.7  2010-06-02 00:32:27  tino
- * example improvements
- *
- * Revision 1.6  2010-06-02 00:26:39  tino
- * Option -t
- *
- * Revision 1.5  2010-06-01 23:51:17  tino
- * Standalone version, slightly improved with option -e
- *
- * Revision 1.3  2008-10-16 19:42:50  tino
- * Multiargs and options -a -d -l -m -u -o
- *
- * Revision 1.2  2008-05-21 17:56:53  tino
- * Options
- *
- * Revision 1.1  2008-05-07 15:12:17  tino
- * dirlist added
  */
 
 #include "tino/main_getini.h"
@@ -254,7 +226,7 @@ do_dirlist1(const char *dir, int check_file)
 	      TINO_ERR1("ETTDI104B %s: cannot open file for read", dir);
 	      return 0;
 	    }
-	  while ((line=tino_buf_line_read(&buf, fd, (f_readz ? 0 : '\n')))!=0)
+	  while ((line=tino_buf_line_readE(&buf, fd, (f_readz ? 0 : '\n')))!=0)
 	    if (do_dirlist1(line, 0) && f_one)
 	      exit(0);
 	  if (fd ? tino_file_closeE(fd) : errno)
